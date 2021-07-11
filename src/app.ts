@@ -1,13 +1,18 @@
 import { Request, Response } from 'express';
 
 const express = require('express');
+const request = require('request');
 const rp = require('request-promise');
+const fs = require('fs');
+
 const db = require('./db.ts');
 
 const PORT = process.env.PORT || 8080;
 const app = express();
 
 app.use(express.json());
+
+app.use(express.static('src/img'));
 
 app.post('/upload/dog/image', async (req: Request, res: Response) => {
   try {
@@ -19,7 +24,10 @@ app.post('/upload/dog/image', async (req: Request, res: Response) => {
     const imgName = imgURL.split('/').pop();
     const imgExt = imgURL.split('.').pop();
 
-    if (imgExt !== 'mp4' && imgExt !== 'webm') {
+    if (imgExt !== 'mp4' && imgExt !== 'webm' && imgExt !== 'gif') {
+      request(`https://random.dog/${imgName}`)
+        .pipe(fs.createWriteStream(`src/img/original-${imgName}`));
+
       const doge = await db.query(`
       insert into doggos (fileName, width, height, fileSizeBytes)
       values
@@ -28,7 +36,7 @@ app.post('/upload/dog/image', async (req: Request, res: Response) => {
 
       res.json(doge.rows);
     } else {
-      res.status(400).send('Something went wrong');
+      res.status(400).send('Format not supported');
     }
   } catch (error) {
     res.status(500).send('Something went wrong');
