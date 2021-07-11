@@ -4,6 +4,7 @@ const express = require('express');
 const request = require('request');
 const rp = require('request-promise');
 const fs = require('fs');
+const sharp = require('sharp');
 
 const db = require('./db.ts');
 
@@ -26,12 +27,21 @@ app.post('/upload/dog/image', async (req: Request, res: Response) => {
 
     if (imgExt !== 'mp4' && imgExt !== 'webm' && imgExt !== 'gif') {
       request(`https://random.dog/${imgName}`)
-        .pipe(fs.createWriteStream(`src/img/original-${imgName}`));
+        .pipe(fs.createWriteStream(`src/img/original-${imgName}`))
+        .on('close', () => {
+          sharp(`src/img/original-${imgName}`)
+            .resize(size.width, size.height)
+            .toFile(`src/img/modified-${imgName}`, (err:any) => {
+              if (err) {
+                res.status(500).send('Image processing error');
+              }
+            });
+        });
 
       const doge = await db.query(`
-      insert into doggos (fileName, width, height, fileSizeBytes)
+      insert into doggos (fileName, width, height, fileSizeBytes, "URLoriginal", "URLmodified")
       values
-      ( '${imgName}', ${size.width}, ${size.height}, ${imgSizeBytes} )
+      ( '${imgName}', ${size.width}, ${size.height}, ${imgSizeBytes},'http://localhost:8080/original-${imgName}' , 'http://localhost:8080/modified-${imgName}' )
       returning id`);
 
       res.json(doge.rows);
