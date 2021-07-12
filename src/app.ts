@@ -49,16 +49,32 @@ app.post('/upload/dog/image', async (req: Request, res: Response) => {
       res.status(400).send('Format not supported');
     }
   } catch (error) {
-    res.status(500).send('Something went wrong');
+    res.status(500).send(error);
   }
 });
 
 app.get('/list/dog/images', async (req: Request, res: Response) => {
   try {
-    const doggos = await db.query('select * from doggos');
+    let query = 'select * from doggos ';
+    let width = 0;
+    let height = 0;
+    if (req.body.size) {
+      width = req.body.size.width;
+      height = req.body.size.height;
+    }
+
+    if (width && height) {
+      query += `where width = ${width} and height = ${height}`;
+    } else if (width) {
+      query += `where width = ${width}`;
+    } else if (height) {
+      query += `where height = ${height}`;
+    }
+
+    const doggos = await db.query(query);
     res.status(200).send(doggos.rows);
   } catch (error) {
-    res.status(500).send('Something went wrong');
+    res.status(500).send(error.message);
   }
 });
 
